@@ -3,14 +3,14 @@
 Code for my group project about (in)validating environmental hypotheses in Cyprus. 
 Authors: Andrea Bisbjerg, Theresa Bensch, Julia Lunardi. 
 
-This project was developed to answer the following research questions: 
+### This project was developed to answer the following research questions: 
   Main question: Are the pollution haven, pollution halo, and/or Environmental Kuznets Curve hypotheses valid in the case of Cyprus?
-  Subquestions: 
-    1. Does FDI demonstrate the possible validation of the pollution haven or halo hypotheses in Cyprus?
-    2. Does GDP demonstrate the possible validation of the EKC in Cyprus?
-    3. What type of causality can be established among the dependent/independent variables?
+  Subquestions:
+    1.  Does FDI demonstrate the possible validation of the pollution haven or halo hypotheses in Cyprus?
+    2.  Does GDP demonstrate the possible validation of the EKC in Cyprus?
+    3.  What type of causality can be established among the dependent/independent variables?
 
-# The full paper can be accessed here: https://rucforsk.ruc.dk/ws/files/75407360/Environmental_hypotheses_in_Cyprus.pdf
+### The full paper can be accessed here: https://rucforsk.ruc.dk/ws/files/75407360/Environmental_hypotheses_in_Cyprus.pdf
 
 # Main findings
 Inductive data mining, undertaken as a preliminary exploratory step, narrowed the focus onto Cyprus and, upon closer examination, identified FDI and GDP as noteworthy variables to investigate. The research question, derived from these findings, marked the start of a deductive process to validate or invalidate the three given hypotheses. Employing ARDL bounds and Granger causality tests, the authors sought to identify correlation among the variables and thereby confirm or reject the presence of these hypotheses. Prior to testing, certain assumptions were established:

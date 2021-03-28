@@ -1,0 +1,185 @@
+---
+title: "analysis 3.12"
+output: html_document
+
+
+install.packages("ARDL")
+
+"quantmod", "tsDyn", "vrtest", "nardl")
+---
+
+# Load packages
+```{r}
+library(dynlm)
+library(zoo)
+library(readxl)
+library(tidyverse)
+library(lmtest)
+library(TTR)
+library(sandwich)
+library(car)
+library(tseries)
+library(urca)
+library(ecm)
+library(forecast)
+library(knitr)
+library(modelr)
+library(astsa)
+library(tsbox)
+library(vars)
+library(dLagM)
+library(quantmod)
+library(tsDyn)
+library(vrtest)
+library(ARDL)
+library(nardl)
+```
+
+# Import data file
+```{r}
+cyprus <- read_excel("file.path")
+
+cyprus <- cyprus_75_16
+```
+
+# Log/square variables
+```{r}
+library(dplyr)
+cyprus <- cyprus %>% mutate(GDP2 = GDP*GDP)
+cyprus <- cyprus %>% mutate(LCO2 = log(CO2))
+cyprus <- cyprus %>% mutate(LGDP = log(GDP))
+cyprus <- cyprus %>% mutate(LGDP2 = (log(GDP))*(log(GDP)))
+cyprus <- cyprus %>% mutate(LFDI = log(FDI))
+constant <- 1-min(cyprus$TRD)
+cyprus <- cyprus %>% mutate(LTRD = log(TRD+constant))
+cyprus <- cyprus %>% mutate(LENER = log(ENER))
+cyprus <- cyprus %>% mutate(LRENEW = log(RENEW))
+```
+
+# Simple OLS and diagnostics
+```{r}
+fit <- lm(LCO2 ~ LGDP + LGDP2 + LFDI + LTRD + LENER, data = cyprus)
+summary(fit)
+durbinWatsonTest(fit)
+dwtest(fit)
+bgtest(fit)
+
+residual <- resid(fit)
+lag.plot(residual, 1, diag.col = "forest green", main = "Lag Scatter Plot")
+lag1.plot(residual, 1)
+cyprus <- add_residuals(cyprus, fit, var = "resid")
+```
+
+# Unit root test
+```{r}
+pacf(cyprus$LCO2)
+adf.test(cyprus$LCO2, k=1)
+pacf(cyprus$LGDP)
+adf.test(cyprus$LGDP, k=1)
+pacf(cyprus$LGDP2)
+adf.test(cyprus$LGDP2, k=1)
+pacf(cyprus$LFDI)
+adf.test(cyprus$LFDI, k=1)
+pacf(cyprus$LTRD)
+adf.test(cyprus$TRD, k=1)
+pacf(cyprus$LENER)
+adf.test(cyprus$LENER, k=1)
+```
+
+## Constant vs. non-constant variance of independent variables?
+```{r}
+detach("package:dplyr", unload = TRUE)
+kvec <- c(2, 5, 10)
+cyprus.ts <- ts(cyprus, start = c(1975,1), end = c(2015,1), frequency = 1)
+Lo.Mac(cyprus.ts[,"LCO2"], kvec)
+Wald(cyprus.ts[,"LCO2"], kvec)
+Lo.Mac(cyprus.ts[,"LGDP"], kvec)
+Wald(cyprus.ts[,"LGDP"], kvec)
+Lo.Mac(cyprus.ts[,"LGDP2"], kvec)
+Wald(cyprus.ts[,"LGDP2"], kvec)
+Lo.Mac(cyprus.ts[,"LFDI"], kvec)
+Wald(cyprus.ts[,"LFDI"], kvec)
+Lo.Mac(cyprus.ts[,"LTRD"], kvec)
+Wald(cyprus.ts[,"LTRD"], kvec)
+Lo.Mac(cyprus.ts[,"LENER"], kvec)
+Wald(cyprus.ts[,"LENER"], kvec)
+library(dplyr)
+```
+
+# Calculating ARDL
+
+## Calculate optimal lag order
+```{r}
+model1 <- auto_ardl(LCO2 ~ LGDP + LGDP2 + LFDI + LTRD + LENER, data = cyprus, max_order = 3, selection = "BIC")
+model1$top_orders
+```
+
+## Simple (unrestricted) ARDL model
+```{r}
+ardl <- ardl(LCO2 ~ LGDP + LGDP2 + LFDI + LTRD + LENER, data = cyprus, order = c(1,0,1,0,0,1))
+summary(ardl)
+```
+
+## t-bound test
+```{r}
+ardl <- ardl(LCO2 ~ LGDP + LGDP2 + LFDI + LTRD + LENER, data = cyprus, order = c(1,0,1,0,0,1))
+summary(ardl)
+tbounds <- bounds_t_test(ardl, case = 3, alpha = 0.01)
+tbounds
+tbounds$tab
+```
+## f-bound test
+```{r}
+ardl <- ardl(LCO2 ~ LGDP + LGDP2 + LFDI + LTRD + LENER, data = cyprus, order = c(1,0,1,0,0,1))
+summary(ardl)
+fbounds <- bounds_f_test(ardl, case = 3)
+fbounds
+```
+## "Cointegration test for cointegration equation" & unrestricted ECM
+
+```{r}
+ardl <- ardl(LCO2 ~ LGDP + LGDP2 + LFDI + LTRD + LENER, data = cyprus, order = c(1,0,1,0,0,1))
+ce2_ardl <- coint_eq(ardl, case = 3)
+uecm <- uecm(ardl)
+summary(uecm)
+ce2_uecm <- coint_eq(uecm, case = 3)
+```
+## Restricted ECM
+```{r
+recm <- recm(uecm, case = 3)
+summary(recm)
+```
+## Check if identical
+```{r}
+identical(ce2_ardl, ce2_uecm)
+```
+## Get long-run estimates
+```{r}
+mult_ardl <- multipliers(ardl)
+mult_ardl
+```
+
+## Plot
+```{
+output <- cbind.zoo(LRM = cyprus$LCO2, ce2_recm)
+plot(output, lty = c(2, 1), lwd = 2, xlab = "Year", main = "CO2")
+```
+#Stability tests
+```{r}
+ardl1 <- ardlBound(LCO2 ~ LGDP + LGDP2 + LFDI + LTRD + LENER, data = cyprus, case = 3, p = 1, max.q = 1, ECM = FALSE, stability = TRUE)
+```
+
+# Granger test
+```{r}
+grangertest(LCO2 ~ LGDP, order = 1, data = cyprus)
+grangertest(LGDP ~ LCO2, order = 1, data = cyprus)
+grangertest(LCO2 ~ LGDP2, order = 1, data = cyprus)
+grangertest(LGDP2 ~ LCO2, order = 1, data = cyprus)
+grangertest(LCO2 ~ LFDI, order = 1, data = cyprus)
+grangertest(LFDI ~ LCO2, order = 1, data = cyprus)
+grangertest(LCO2 ~ LTRD, order = 1, data = cyprus)
+grangertest(LTRD ~ LCO2, order = 1, data = cyprus)
+grangertest(LCO2 ~ LENER, order = 1, data = cyprus)
+grangertest(LENER ~ LCO2, order = 1, data = cyprus)
+```
+
